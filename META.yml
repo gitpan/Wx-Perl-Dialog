@@ -1,0 +1,42 @@
+---
+name: Wx-Perl-Dialog
+version: 0.01
+author:
+  - Gabor Szabo
+abstract: a set of simple dialogs (a partial Zenity clone in wxPerl)
+license: perl
+resources:
+  MailingList: http://mail.perlide.org/mailman/listinfo/padre-dev
+  Repository: http://svn.perlide.org/padre
+  bugtracker: http://padre.perlide.org/
+  homepage: http://padre.perlide.org/
+  license: http://dev.perl.org/licenses/
+requires:
+  Exporter: 0
+  File::Copy::Recursive: 0
+  File::Spec: 0
+  File::Spec::Functions: 0
+  FindBin: 0
+  Wx: 0
+  Wx::Perl::ProcessStream: 0
+  perl: 5.008
+build_requires:
+  Test::Exception: 0
+  Test::More: 0.47
+  Test::NoWarnings: 0
+provides:
+  Wx::Perl::Dialog:
+    file: lib/Wx/Perl/Dialog.pm
+    version: 0.01
+  Wx::Perl::Dialog::Frame:
+    file: lib/Wx/Perl/Dialog/Frame.pm
+    version: 0.01
+generated_by: Module::Build version 0.2808
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2
+no_index:
+  directory:
+    - t
+    - eg
+    - share
