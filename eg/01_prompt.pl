@@ -5,14 +5,7 @@ use strict;
 use warnings;
 
 use lib 'lib';
-use Wx::Perl::Dialog;
+use Wx::Perl::Dialog::Simple;
 
-
-my $empty = entry();
-message(text => $empty);
-
-my $name = entry(title => "What is your name?");
-message(text => "How are you $name today?\n");
-
-my $how = entry(title => $name, prompt => "How are you?");
-message(text => "$name,  $how");
+my $how = entry(title => "Asking Foo", prompt => "How are you today?");
+message(text => $how);

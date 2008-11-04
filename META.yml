@@ -1,9 +1,9 @@
 ---
 name: Wx-Perl-Dialog
-version: 0.01
+version: 0.02
 author:
   - Gabor Szabo
-abstract: a set of simple dialogs (a partial Zenity clone in wxPerl)
+abstract: Abstract dialog class for simple dialog creation
 license: perl
 resources:
   MailingList: http://mail.perlide.org/mailman/listinfo/padre-dev
@@ -27,10 +27,16 @@ build_requires:
 provides:
   Wx::Perl::Dialog:
     file: lib/Wx/Perl/Dialog.pm
-    version: 0.01
+    version: 0.02
   Wx::Perl::Dialog::Frame:
     file: lib/Wx/Perl/Dialog/Frame.pm
-    version: 0.01
+    version: 0.02
+  Wx::Perl::Dialog::Simple:
+    file: lib/Wx/Perl/Dialog/Simple.pm
+    version: 0.02
+  Wx::Perl::Dialog::SingleChoice:
+    file: lib/Wx/Perl/Dialog/SingleChoice.pm
+    version: 0.02
 generated_by: Module::Build version 0.2808
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html

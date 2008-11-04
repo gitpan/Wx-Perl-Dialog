@@ -10,7 +10,7 @@ use Wx::Event          qw(:everything);
 use Wx::Perl::Dialog::Frame ();
 use base 'Wx::Frame';
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub new {
     my ($class) = @_;
@@ -42,3 +42,8 @@ sub on_activate {
 }
 
 1;
+
+# Copyright 2008 Gabor Szabo.
+# LICENSE
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl 5 itself.

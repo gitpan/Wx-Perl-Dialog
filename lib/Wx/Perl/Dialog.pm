@@ -4,242 +4,278 @@ use 5.008;
 use strict;
 use warnings;
 
-use base 'Exporter';
-use File::Spec;
+our $VERSION = '0.02';
 
-our $VERSION = '0.01';
+use Wx ':everything';
 
-$| = 1;
-
-our @EXPORT = qw(
-                 entry
-                 password
-                 file_selector
-                 dir_selector
-                 choice
-                 message
-                 calendar
-               );
-#                 print_out close_app open_frame display_text
-
-use Wx                 qw(:everything);
-use Wx::STC            ();
-use Wx::Event          qw(:everything);
+use base 'Wx::Dialog';
 
 =head1 NAME
 
-Wx::Perl::Dialog - a set of simple dialogs (a partial Zenity clone in wxPerl)
+Wx::Perl::Dialog - Abstract dialog class for simple dialog creation
 
-=head1 SYNOPIS
+=head1 SYNOPSIS
 
-As a module:
+	my $layout = [
+		[
+			[ 'Wx::StaticText', undef,         'Some text entry'],
+			[ 'Wx::TextCtrl',   'name_of',     'Default value'  ],
+		],
+		[
+			[ 'Wx::Button',     'ok',           Wx::wxID_OK     ],
+			[ 'Wx::Button',     'cancel',       Wx::wxID_CANCEL ],
+		],
+    ];
 
- use Wx::Perl::Dialog;
+ 	my $dialog = Wx::Perl::Dialog->new(
+		parent => $win,
+		title  => 'Widgetry dialog',
+		layout => $layout,
+		width  => [150, 200],
+	);
 
- my $name = entry(title => "What is your name?");
- message(text => "How are you $name today?\n");
+   	return if not $dialog->show_modal;
 
 
-On the command line try
+Where $win is the Wx::Frame of your application.
 
- wxer --help
 
-=head1 General Options
+=head1 DESCRIPTION
 
-There are some common option for every dialog
+=head2 Layout
 
-title
+The layout is reference to a two dimensional array.
+Every element (an array) represents one line in the dialog.
 
-window-icon  NA
+Every element in the internal array is an array that describes a widget.
 
-width        NA
+The first value in each widget description is the type of the widget.
 
-height       NA
+The second value is an identifyer (or undef if we don't need any access to the widget).
 
-=cut
+The widget will be accessible form the dialog object using $dialog->{_widgets_}{identifyer}
+
+The rest of the values in the array depend on the widget.
+
+Supported widgets and their parameters:
+
+=over 4
+
+=item Wx::StaticText
+
+ 3.: "the text",
+
+=item Wx::Button
+
+ 3.: button type (stock item such as Wx::wxID_OK or string "&do this")
+ 
+=item Wx::DirPickerCtrl
+
+ 3. default directory (must be '')  ???
+ 4. title to show on the directory browser 
+
+=item Wx::TextCtrl
+
+ 3. default value, if any
+
+=item Wx::Treebook
+
+ 3. array ref for list of values
+
+=back
 
 =head1 METHODS
 
-Dialogs
+=cut
 
-=head2 entry
-
-Display a text entry dialog
+=head2 new
 
 =cut
 
-sub entry {
-    my ( %args ) = @_;
+sub new {
+	my ($class, %args) = @_;
 
-    %args = (
-              title   => '',
-              prompt  => '',
-              default => '',
-              %args);
+	my %default = (
+		parent          => undef,
+		id              => -1,
+		style           => Wx::wxDEFAULT_FRAME_STYLE,
+		title           => '',
+		pos             => [-1, -1],
+		size            => [-1, -1],
+		
+		top             => 5,
+		left            => 5,
+		bottom          => 20,
+		right           => 5,
+		element_spacing => [0, 5],
+	);
+	%args = (%default, %args);
 
-    my $class = $args{password} ? 'Wx::PasswordEntryDialog' : 'Wx::TextEntryDialog';
-    my $dialog = $class->new( undef, $args{prompt}, $args{title}, $args{default} );
-    if ($dialog->ShowModal == wxID_CANCEL) {
-        return;
-    }
-    my $resp = $dialog->GetValue;
-    $dialog->Destroy;
-    return $resp;
+	my $self = $class->SUPER::new( @args{qw(parent id title pos size style)});
+	$self->_build_layout( map {$_ => $args{$_} } qw(layout width top left bottom right element_spacing) );
+	$self->{_layout_} = $args{layout};
+
+	return $self;
 }
 
-=head2 password
+=head2 get_data
 
+ my $data = $dialog->get_data;
+ 
+Returns a hash with the keys being the names you gave for each widgets
+and the value being the value of that widget in the dialog.
+
+=cut 
+ 
+sub get_data {
+	my ( $dialog ) = @_;
+
+	my $layout = $dialog->{_layout_};
+	my %data;
+	foreach my $i (0..@$layout-1) {
+		foreach my $j (0..@{$layout->[$i]}-1) {
+			next if not @{ $layout->[$i][$j] }; # [] means Expand
+			my ($class, $name, $arg, @params) = @{ $layout->[$i][$j] };
+			if ($name) {
+				next if $class eq 'Wx::Button';
+
+				if ($class eq 'Wx::DirPickerCtrl') {
+					$data{$name} = $dialog->{_widgets_}{$name}->GetPath;
+				} elsif ($class eq 'Wx::FilePickerCtrl') {
+					$data{$name} = $dialog->{_widgets_}{$name}->GetPath;
+				} elsif ($class eq 'Wx::Choice') {
+					$data{$name} = $dialog->{_widgets_}{$name}->GetSelection;
+				} else {
+					$data{$name} = $dialog->{_widgets_}{$name}->GetValue;
+				}
+			}
+		}
+	}
+
+	return \%data;
+}
+
+=head2 show_modal
+
+Helper function that will probably change soon...
+
+ return if not $dialog->show_modal;
+ 
 =cut
 
-sub password {
-    my ( %args ) = @_;
+sub show_modal {
+	my ( $dialog ) = @_;
 
-    $args{password} = 1;
-    
-    return entry( %args );
-}
-
-=head2 file_selector
-
-=cut
-
-sub file_selector {
-    my ( %args ) = @_;
-    %args = (
-                title => '',
-                %args);
-
-    my $dialog = Wx::FileDialog->new( undef, $args{title}, '', "", "*.*", wxFD_OPEN);
-    if ($^O !~ /win32/i) {
-       $dialog->SetWildcard("*");
-    }
-    if ($dialog->ShowModal == wxID_CANCEL) {
-        return;
-    }
-    my $filename = $dialog->GetFilename;
-    my $default_dir = $dialog->GetDirectory;
-
-    return File::Spec->catfile($default_dir, $filename);
-}
-
-=head2 dir_selector
-
-=cut
-
-sub dir_selector {
-    my ( %args ) = @_;
-    %args = (
-                title => '',
-                path  => '',
-                %args);
-
-    my $dialog = Wx::DirDialog->new( undef, $args{title}, $args{path});
-    if ($dialog->ShowModal == wxID_CANCEL) {
-        return;
-    }
-    my $dir = $dialog->GetPath;
-
-    return $dir;
+	my $ret = $dialog->ShowModal;
+	if ( $ret eq Wx::wxID_CANCEL ) {
+		$dialog->Destroy;
+		return;
+	} else {
+		return $ret;
+	}
 }
 
 
+# Internal function
+#
+# $dialog->_build_layout(
+#	layout          => $layout,
+#	width           => $width,
+#	top             => $top
+#	left            => $left, 
+#	element_spacing => $element_spacing,
+#	);
+#
+sub _build_layout {
+	my ($dialog, %args) = @_;
 
-=head2 choice
+	# TODO make sure width has enough elements to the widest row
+	# or maybe we should also check that all the rows has the same number of elements
+	my $box  = Wx::BoxSizer->new( Wx::wxVERTICAL );
+	
+	# Add top margin
+	$box->Add(0, $args{top}, 0) if $args{top};
 
-=cut
+	foreach my $i (0..@{$args{layout}}-1) {
+		my $row = Wx::BoxSizer->new( Wx::wxHORIZONTAL );
+		$box->Add(0, $args{element_spacing}[1], 0) if $args{element_spacing}[1] and $i;
+		$box->Add($row);
 
-sub choice {
-    my ( %args ) = @_;
-    %args = (
-                title   => '',
-                message => '',
-                choices => [],
+		# Add left margin
+		$row->Add($args{left}, 0, 0) if $args{left};
+		
+		foreach my $j (0..@{$args{layout}[$i]}-1) {
+			my $width = [$args{width}[$j], -1];
 
-                %args);
+			if (not @{ $args{layout}[$i][$j] } ) {  # [] means Expand
+				$row->Add($args{width}[$j], 0, 0, Wx::wxEXPAND, 0);
+				next;
+			}
+			$row->Add($args{element_spacing}[0], 0, 0) if $args{element_spacing}[0] and $j;
+			my ($class, $name, $arg, @params) = @{ $args{layout}[$i][$j] };
 
-    my $dialog = Wx::MultiChoiceDialog->new( undef, $args{message}, $args{title}, $args{choices});
-    if ($dialog->ShowModal == wxID_CANCEL) {
-        return;
-    }
-    return map {$args{choices}[$_]} $dialog->GetSelections;
+			my $widget;
+			if ($class eq 'Wx::StaticText') {
+				$widget = $class->new( $dialog, -1, $arg, Wx::wxDefaultPosition, $width );
+			} elsif ($class eq 'Wx::Button') {
+				my $s = Wx::Button::GetDefaultSize;
+				#print $s->GetWidth, " ", $s->GetHeight, "\n";
+				my @args = $arg =~ /[a-zA-Z]/ ? (-1, $arg) : ($arg, '');
+				my $size = Wx::Button::GetDefaultSize();
+				$widget = $class->new( $dialog, @args, Wx::wxDefaultPosition, $size );
+			} elsif ($class eq 'Wx::DirPickerCtrl') {
+				my $title = shift(@params) || '';
+				$widget = $class->new( $dialog, -1, $arg, $title, Wx::wxDefaultPosition, $width );
+				# it seems we cannot set the default directory and 
+				# we still have to set this directory in order to get anything back in
+				# GetPath
+				$widget->SetPath(Cwd::cwd());
+			} elsif ($class eq 'Wx::FilePickerCtrl') {
+				my $title = shift(@params) || '';
+				$widget = $class->new( $dialog, -1, $arg, $title, Wx::wxDefaultPosition, $width );
+				$widget->SetPath(Cwd::cwd());
+			} elsif ($class eq 'Wx::TextCtrl') {
+				$widget = $class->new( $dialog, -1, $arg, Wx::wxDefaultPosition, $width );
+			} elsif ($class eq 'Wx::CheckBox') {
+				my $default = shift @params;
+				$widget = $class->new( $dialog, -1, $arg, Wx::wxDefaultPosition, $width, @params );
+				$widget->SetValue($default);
+			} elsif ($class eq 'Wx::ComboBox') {
+				$widget = $class->new( $dialog, -1, $arg, Wx::wxDefaultPosition, $width, @params );
+			} elsif ($class eq 'Wx::Choice') {
+				$widget = $class->new( $dialog, -1, Wx::wxDefaultPosition, $width, $arg, @params );
+				$widget->SetSelection(0);
+			} elsif ($class eq 'Wx::Treebook') {
+				my $height = @$arg * 27; # should be height of font
+				$widget = $class->new( $dialog, -1, Wx::wxDefaultPosition, [$args{width}[$j], $height] );
+				foreach my $name ( @$arg ) {
+					my $count = $widget->GetPageCount;
+					my $page  = Wx::Panel->new( $widget );
+					$widget->AddPage( $page, $name, 0, $count );
+				}
+			} else {
+				warn "Unsupported widget $class\n";
+				next;
+			}
+
+			$row->Add($widget);
+
+			if ($name) {
+				$dialog->{_widgets_}{$name} = $widget;
+			}
+		}
+		$row->Add($args{right}, 0, 0, Wx::wxEXPAND, 0) if $args{right}; # margin
+	}
+	$box->Add(0, $args{bottom}, 0) if $args{bottom}; # margin
+
+	$dialog->SetSizerAndFit($box);
+
+	return;
 }
 
+=head1 BUGS
 
-
-#=head2 print_out
-#
-#=cut
-
-#sub print_out {
-#    my ($output, $text) = @_;
-#    $output->AddText($text);
-#    #$Wx::Perl::Dialog::app->Yield;
-#    return;
-#}
-#
-
-=head2 message
-
-=cut
-
-sub message {
-    my ( %args ) = @_;
-
-    %args = (
-                title   => '',
-                text    => '',
-
-                %args);
-
-    Wx::MessageBox( $args{text}, $args{title}, wxOK|wxCENTRE);
-
-    return;
-}
-
-#=head2 calendar
-#
-#=cut
-
-#sub calendar {
-#    my ( %args ) = @_;
-#
-#    require Wx::Calendar;
-#    my $cal = Wx::CalendarCtrl->new();
-#    $cal->Show;
-#
-#    return;
-#}
-#
-
-#=head2 open_frame
-#
-#=cut
-
-#sub open_frame {
-#    my $frame = Wx::Perl::Dialog::Frame->new;
-#    my $output = Wx::StyledTextCtrl->new($frame, -1, [-1, -1], [750, 700]);
-#    $output->SetMarginWidth(1, 0);
-#    $frame->Show( 1 );
-#    return $output;
-#}
-#
-#
-#=head2 close_app
-#
-#=cut
-
-#sub close_app {
-##   $frame->Close;
-#}
-#
-
-
-#our $main;
-#our $app;
-
-=head1 SUPPORT
-
-See L<http://padre.perlide.org/>
+Please submit bugs you find on L<http://padre.perlide.org/>
 
 =head1 COPYRIGHT
 
@@ -250,20 +286,6 @@ Copyright 2008 Gabor Szabo. L<http://www.szabgab.com/>
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl 5 itself.
 
-=head1 WARRANTY
-
-There is no warranty whatsoever.
-If you lose data or your hair because of this program,
-that's your problem.
-
-=head1 CREDITS and THANKS
-
-To Mattia Barbon for providing WxPerl.
-
-The idea was taken from the Zenity project.
-
 =cut
-
-
 
 1;

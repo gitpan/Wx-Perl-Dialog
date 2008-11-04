@@ -7,4 +7,7 @@ use warnings;
 use lib 'lib';
 use Wx::Perl::Dialog::Simple;
 
-print map {"$_\n"} choice( choices => [qw(a b c)] );
+my $empty = file_picker() || '';
+print "$empty\n";
+message(text => $empty);
+
