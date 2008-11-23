@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Wx ':everything';
 
@@ -36,8 +36,14 @@ Wx::Perl::Dialog - Abstract dialog class for simple dialog creation
 
    	return if not $dialog->show_modal;
 
+    my $data = $dialog->get_data; 
 
 Where $win is the Wx::Frame of your application.
+
+=head1 B<WARNING>
+
+This is still an alpha version of the code. It is used mainly by L<Padre> and its
+plugins. The API can change without any warning.
 
 
 =head1 DESCRIPTION
@@ -235,7 +241,12 @@ sub _build_layout {
 				$widget = $class->new( $dialog, -1, $arg, $title, Wx::wxDefaultPosition, $width );
 				$widget->SetPath(Cwd::cwd());
 			} elsif ($class eq 'Wx::TextCtrl') {
-				$widget = $class->new( $dialog, -1, $arg, Wx::wxDefaultPosition, $width );
+				my @rest;
+				if (@params) {
+					$width->[1] = $params[0];
+					push @rest, Wx::wxTE_MULTILINE;
+				}
+				$widget = $class->new( $dialog, -1, $arg, Wx::wxDefaultPosition, $width, @rest );
 			} elsif ($class eq 'Wx::CheckBox') {
 				my $default = shift @params;
 				$widget = $class->new( $dialog, -1, $arg, Wx::wxDefaultPosition, $width, @params );
@@ -245,6 +256,8 @@ sub _build_layout {
 			} elsif ($class eq 'Wx::Choice') {
 				$widget = $class->new( $dialog, -1, Wx::wxDefaultPosition, $width, $arg, @params );
 				$widget->SetSelection(0);
+			} elsif ($class eq 'Wx::StaticLine') {
+				$widget = $class->new( $dialog, -1, Wx::wxDefaultPosition, $width, $arg, @params );
 			} elsif ($class eq 'Wx::Treebook') {
 				my $height = @$arg * 27; # should be height of font
 				$widget = $class->new( $dialog, -1, Wx::wxDefaultPosition, [$args{width}[$j], $height] );

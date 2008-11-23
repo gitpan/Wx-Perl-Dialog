@@ -1,6 +1,6 @@
 ---
 name: Wx-Perl-Dialog
-version: 0.02
+version: 0.03
 author:
   - Gabor Szabo
 abstract: Abstract dialog class for simple dialog creation
@@ -27,17 +27,17 @@ build_requires:
 provides:
   Wx::Perl::Dialog:
     file: lib/Wx/Perl/Dialog.pm
-    version: 0.02
+    version: 0.03
   Wx::Perl::Dialog::Frame:
     file: lib/Wx/Perl/Dialog/Frame.pm
-    version: 0.02
+    version: 0.03
   Wx::Perl::Dialog::Simple:
     file: lib/Wx/Perl/Dialog/Simple.pm
-    version: 0.02
+    version: 0.03
   Wx::Perl::Dialog::SingleChoice:
     file: lib/Wx/Perl/Dialog/SingleChoice.pm
-    version: 0.02
-generated_by: Module::Build version 0.2808
+    version: 0.03
+generated_by: Module::Build version 0.280801
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html
   version: 1.2
