@@ -1,16 +1,32 @@
 ---
-name: Wx-Perl-Dialog
-version: 0.03
+abstract: 'Abstract dialog class for simple dialog creation'
 author:
-  - Gabor Szabo
-abstract: Abstract dialog class for simple dialog creation
+  - 'Gabor Szabo'
+build_requires:
+  ExtUtils::MakeMaker: 6.11
+  Test::Exception: 0.27
+  Test::More: 0.47
+  Test::NeedsDisplay: 1.05
+  Test::NoWarnings: 0.084
+distribution_type: module
+generated_by: 'Module::Install version 0.77'
 license: perl
-resources:
-  MailingList: http://mail.perlide.org/mailman/listinfo/padre-dev
-  Repository: http://svn.perlide.org/padre
-  bugtracker: http://padre.perlide.org/
-  homepage: http://padre.perlide.org/
-  license: http://dev.perl.org/licenses/
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Wx-Perl-Dialog
+no_index:
+  directory:
+    -
+      - t
+      - xt
+      - eg
+      - share
+      - inc
+      - privinc
+    - eg
+    - inc
+    - t
 requires:
   Exporter: 0
   File::Copy::Recursive: 0
@@ -19,30 +35,10 @@ requires:
   FindBin: 0
   Wx: 0
   Wx::Perl::ProcessStream: 0
-  perl: 5.008
-build_requires:
-  Test::Exception: 0
-  Test::More: 0.47
-  Test::NoWarnings: 0
-provides:
-  Wx::Perl::Dialog:
-    file: lib/Wx/Perl/Dialog.pm
-    version: 0.03
-  Wx::Perl::Dialog::Frame:
-    file: lib/Wx/Perl/Dialog/Frame.pm
-    version: 0.03
-  Wx::Perl::Dialog::Simple:
-    file: lib/Wx/Perl/Dialog/Simple.pm
-    version: 0.03
-  Wx::Perl::Dialog::SingleChoice:
-    file: lib/Wx/Perl/Dialog/SingleChoice.pm
-    version: 0.03
-generated_by: Module::Build version 0.280801
-meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.2.html
-  version: 1.2
-no_index:
-  directory:
-    - t
-    - eg
-    - share
+  perl: 5.008001
+resources:
+  bugtracker: http://padre.perlide.org/
+  homepage: http://padre.perlide.org/
+  license: http://dev.perl.org/licenses/
+  repository: http://svn.perlide.org/padre/trunk/Wx-Perl-Dialog
+version: 0.04

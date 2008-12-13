@@ -4,7 +4,7 @@ use 5.008;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Wx ':everything';
 
@@ -38,6 +38,20 @@ Wx::Perl::Dialog - Abstract dialog class for simple dialog creation
 
     my $data = $dialog->get_data; 
 
+	#### You may also create a tabbed dialog for more complex tasks:
+
+	my $tabbed_dialog = Wx::Perl::Dialog->new(
+		parent => $win,
+		title  => 'Widgetry dialog',
+		layout => [ $layout_a, $layout_b, ]
+		multipage => {
+			auto_ok_cancel => 1,
+			ok_widgetid => '_ok_',
+			cancel_widgetid => '_cancel_',
+			pagenames => [ 'Basic', 'Advanced' ]
+		},
+	);
+
 Where $win is the Wx::Frame of your application.
 
 =head1 B<WARNING>
@@ -63,7 +77,7 @@ The widget will be accessible form the dialog object using $dialog->{_widgets_}{
 
 The rest of the values in the array depend on the widget.
 
-Supported widgets and their parameters:
+=head2 Supported widgets and their parameters
 
 =over 4
 
@@ -88,7 +102,45 @@ Supported widgets and their parameters:
 
  3. array ref for list of values
 
+=item Wx::FontPickerCtrl
+
+ 3. A string describing the font
+
+=item Wx::ColourPickerCtrl
+
+ 3. A HTML-compatible colour description string: '#' plus 6 hex digits; i.e. #FF0000
+
 =back
+
+=head2 Multipage Layout (with a Wx::Notebook)
+
+If you pass in a parameter 'multipage', a tabbed dialog will be created using a 
+Wx::Notebook. 
+The value of the 'layout' parameter will be interpreted as an arrayref where each 
+value represents the contents of one page (see section "Layout").
+
+The value of the 'multipage' param should be a hash containing extra options.
+
+=over 4
+
+=item auto_ok_cancel
+
+ If set to a true value, an OK and a CANCEL button will be displayed automatically
+ below the tabbed pages.
+
+=item ok_widgetid
+
+ An identifier for the automatically genereated OK button.
+ Useful if you want to have access to the button via
+ $dialog->{_widgets_}{<ok_widgetid>}
+
+=item cancel_widgetid
+
+ Same as above but for the CANCEL button
+
+=item pagenames
+
+ An arrayref of strings which represent the tab titles. 
 
 =head1 METHODS
 
@@ -114,11 +166,18 @@ sub new {
 		bottom          => 20,
 		right           => 5,
 		element_spacing => [0, 5],
+		multipage       => undef,
 	);
 	%args = (%default, %args);
 
 	my $self = $class->SUPER::new( @args{qw(parent id title pos size style)});
-	$self->_build_layout( map {$_ => $args{$_} } qw(layout width top left bottom right element_spacing) );
+	if ( defined( $args{multipage} ) ) {
+		$self->_build_multipage_layout( map {$_ => $args{$_} } qw(layout width top left bottom right element_spacing multipage) );
+		$self->{_multipage_} = $args{multipage};
+	}
+	else {
+		$self->_build_layout( map {$_ => $args{$_} } qw(layout width top left bottom right element_spacing) );
+	}
 	$self->{_layout_} = $args{layout};
 
 	return $self;
@@ -137,7 +196,27 @@ sub get_data {
 	my ( $dialog ) = @_;
 
 	my $layout = $dialog->{_layout_};
-	my %data;
+	my %data = ();
+
+	if ( $dialog->{_multipage_} ) {
+		foreach my $tab ( @$layout ) {
+			%data = ( %data, _extract_data( $dialog, $tab ) );
+		}
+	}
+	else {
+		%data = _extract_data( $dialog, $layout );
+	}
+
+	return \%data;
+}
+
+# Internal function
+#
+
+sub _extract_data {
+	my( $dialog, $layout ) = @_;
+	my %data = ();
+
 	foreach my $i (0..@$layout-1) {
 		foreach my $j (0..@{$layout->[$i]}-1) {
 			next if not @{ $layout->[$i][$j] }; # [] means Expand
@@ -151,6 +230,10 @@ sub get_data {
 					$data{$name} = $dialog->{_widgets_}{$name}->GetPath;
 				} elsif ($class eq 'Wx::Choice') {
 					$data{$name} = $dialog->{_widgets_}{$name}->GetSelection;
+				} elsif ($class eq 'Wx::FontPickerCtrl') {
+					$data{$name} = $dialog->{_widgets_}{$name}->GetSelectedFont->GetNativeFontInfoUserDesc;
+				} elsif ($class eq 'Wx::ColourPickerCtrl') {
+					$data{$name} = $dialog->{_widgets_}{$name}->GetColour->GetAsString(Wx::wxC2S_HTML_SYNTAX);
 				} else {
 					$data{$name} = $dialog->{_widgets_}{$name}->GetValue;
 				}
@@ -158,7 +241,7 @@ sub get_data {
 		}
 	}
 
-	return \%data;
+	return %data;
 }
 
 =head2 show_modal
@@ -181,6 +264,65 @@ sub show_modal {
 	}
 }
 
+# Internal function
+#
+
+sub _build_multipage_layout {
+	my ($dialog, %args) = @_;
+
+	my $multipage = $args{multipage};
+	delete $args{multipage};
+
+	my $row_cnt = 1;
+	if ( defined( $multipage->{auto_ok_cancel} ) && $multipage->{auto_ok_cancel} ) {
+		$row_cnt++;
+	}
+
+	my $outerBox  = Wx::FlexGridSizer->new( $row_cnt, 1, 0, 0 );
+	$outerBox->SetFlexibleDirection( Wx::wxBOTH );
+	my $nb = Wx::Notebook->new( $dialog, Wx::wxID_ANY, Wx::wxDefaultPosition, Wx::wxDefaultSize, 0 );
+
+	foreach my $i (0..@{$args{layout}}-1) {
+		my $panel = Wx::Panel->new( $nb, Wx::wxID_ANY, Wx::wxDefaultPosition, Wx::wxDefaultSize, Wx::wxTAB_TRAVERSAL );
+		_build_layout($panel, %args, 'layout', ${$args{layout}}[$i]);
+		foreach my $k ( keys %{$panel->{_widgets_}} ) {
+			$dialog->{_widgets_}{$k} = $panel->{_widgets_}{$k};
+		}
+		my $pagename = $i + 1;
+		if ( defined $multipage->{pagenames}->[$i] ) {
+			$pagename = $multipage->{pagenames}->[$i];
+		}
+		$nb->AddPage( $panel, $pagename, ( $i == 0 ? 1 : 0 ) );
+	}
+	$outerBox->Add( $nb, 1, wxEXPAND|wxALL, 5 );
+
+	if ( defined( $multipage->{auto_ok_cancel} ) && $multipage->{auto_ok_cancel} ) {
+		my $button_row = Wx::BoxSizer->new( Wx::wxHORIZONTAL );
+
+		my $size = Wx::Button::GetDefaultSize;
+
+		my $ok_btn = Wx::Button->new( $dialog, Wx::wxID_OK, '', Wx::wxDefaultPosition, $size );
+		if ( my $ok_id = ( defined $multipage->{ok_widgetid} ? $multipage->{ok_widgetid} : '' ) ) {
+			$dialog->{_widgets_}{$ok_id} = $ok_btn;
+		}
+
+		my $cancel_btn = Wx::Button->new( $dialog, Wx::wxID_CANCEL, '', Wx::wxDefaultPosition, $size );
+		if ( my $cancel_id = ( defined $multipage->{cancel_id} ? $multipage->{cancel_id} : '' ) ) {
+			$dialog->{_widgets_}{$cancel_id} = $cancel_btn;
+		}
+
+		$button_row->Add( $ok_btn, 0, Wx::wxALL|Wx::wxALIGN_CENTER_VERTICAL );
+		$button_row->Add( $cancel_btn, 0, Wx::wxALL|Wx::wxALIGN_CENTER_VERTICAL );
+
+		$outerBox->Add( $button_row, 1, wxEXPAND|wxALL, 5 );
+	}
+
+	$dialog->SetSizer($outerBox);
+	$dialog->Layout();
+	$outerBox->Fit($dialog);
+
+	return;
+}
 
 # Internal function
 #
@@ -266,6 +408,22 @@ sub _build_layout {
 					my $page  = Wx::Panel->new( $widget );
 					$widget->AddPage( $page, $name, 0, $count );
 				}
+			} elsif ($class eq 'Wx::FontPickerCtrl') {
+				my $default_val = ( defined $arg ? $arg : '' );
+				my $default = Wx::Font->new(Wx::wxNullFont);
+				eval {
+					$default->SetNativeFontInfoUserDesc($default_val);
+				};
+				$default = Wx::wxNullFont if $@;
+				$widget = $class->new( $dialog, -1, $default, Wx::wxDefaultPosition, $width, Wx::wxFNTP_DEFAULT_STYLE );
+			} elsif ($class eq 'Wx::ColourPickerCtrl') {
+				my $default_val = ( defined($arg) && $arg ? $arg : '#000000' );
+				my $default;
+				eval {
+					$default = Wx::Colour->new($default_val);
+				};
+				$default = Wx::Colour->new('#000000') if $@;
+				$widget = $class->new( $dialog, -1, $default, Wx::wxDefaultPosition, $width, Wx::wxCLRP_DEFAULT_STYLE );
 			} else {
 				warn "Unsupported widget $class\n";
 				next;
